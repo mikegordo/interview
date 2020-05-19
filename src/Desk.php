@@ -3,6 +3,14 @@
 class Desk {
     private $figures = [];
 
+    /**
+     * Flag indicates last move done by black
+     * True by default because whites always start
+     *
+     * @var bool
+     */
+    private $lastMoveBlack = true;
+
     public function __construct() {
         $this->figures['a'][1] = new Rook(false);
         $this->figures['b'][1] = new Knight(false);
@@ -51,10 +59,54 @@ class Desk {
         $xTo   = $match[3];
         $yTo   = $match[4];
 
-        if (isset($this->figures[$xFrom][$yFrom])) {
-            $this->figures[$xTo][$yTo] = $this->figures[$xFrom][$yFrom];
+        if (!isset($this->figures[$xFrom][$yFrom])) {
+            throw new \Exception("Incorrect move");
         }
+
+        $this->validateColor($this->figures[$xFrom][$yFrom]);
+        $this->validateJumpOver([$xFrom, $yFrom], [$xTo, $yTo]);
+        $this->figures[$xFrom][$yFrom]->validateMove([$xFrom, $yFrom], [$xTo, $yTo], empty($this->figures[$xTo][$yTo]));
+        $this->figures[$xTo][$yTo] = $this->figures[$xFrom][$yFrom];
+
         unset($this->figures[$xFrom][$yFrom]);
+    }
+
+    protected function validateColor($figure) {
+        $isBlack = $figure->isBlackFigure();
+        if ($this->lastMoveBlack == $isBlack) {
+            throw new \Exception("Incorrect move");
+        }
+        $this->lastMoveBlack = !$this->lastMoveBlack;
+    }
+
+    protected function validateJumpOver($from, $to) {
+        list($xFrom, $yFrom) = $from;
+        list($xTo, $yTo) = $to;
+        $canJumpOver = $this->figures[$xFrom][$yFrom]->canJumpOverFigure();
+        if ($canJumpOver) {
+            return;
+        }
+
+        if (abs($xFrom - $xTo) < 2 && abs($yFrom - $yTo) < 2) {
+            return;
+        }
+
+        // only implementing for strictly vertical or horizontal moves
+        if ($xFrom != $xTo && $yFrom == $yTo) {
+            for ($x = $xTo > $xFrom ? $xFrom + 1 : $xFrom - 1; $x < $xTo; $x = $xTo > $xFrom ? $x + 1 : $x - 1) {
+                if (!empty($this->figures[$x][$yFrom])) {
+                    throw new \Exception("Incorrect move");
+                }
+            }
+        }
+
+        if ($yFrom != $yTo && $xFrom == $xTo) {
+            for ($y = $yTo > $yFrom ? $yFrom + 1 : $yFrom - 1; $y < $yTo; $y = $yTo > $yFrom ? $y + 1 : $y - 1) {
+                if (!empty($this->figures[$xFrom][$y])) {
+                    throw new \Exception("Incorrect move");
+                }
+            }
+        }
     }
 
     public function dump() {
